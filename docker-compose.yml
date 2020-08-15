@@ -1,0 +1,60 @@
+version: '3'
+services:
+  redis:
+    image: 'redis:latest'
+    container_name: redis
+    networks:
+      - test
+    ports:
+      - 6379:6379
+    volumes:
+      - ./external/redis:/data
+
+  mongo:
+    image: 'mongo:latest'
+    restart: always
+    container_name: mongodb
+    networks:
+      - test
+    ports:
+      - 27017:27017
+    volumes:
+      - ./external/mongo:/data
+
+  rabbitmq:
+    image: 'rabbitmq:latest'
+    container_name: rabbitmq
+    ports:
+      - 5672:5672
+    networks:
+      - test
+    volumes:
+      - ./external/rabbitmq:/data
+
+  backend:
+    container_name: test-backend
+    restart: always
+    build: 
+      dockerfile: Dockerfile
+      context: .
+    volumes:
+      - .:/app
+      - /app/node_modules
+    env_file:
+     - ./compose.env
+    links:
+      - rabbitmq
+    depends_on:
+      - mongo
+      - redis
+      - rabbitmq
+    networks:
+      - test
+    # command: npm run dev
+    command: ['./wait-for-it.sh', 'rabbitmq:5672', '--', 'npm', 'run', 'dev']
+    ports:
+      - 3050:3050
+
+networks:
+  test:
+    driver: bridge
